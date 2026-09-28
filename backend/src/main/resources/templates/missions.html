@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Missions | Drone Operations</title>
+    <link rel="stylesheet" th:href="@{/css/app.css(v=4)}">
+</head>
+<body>
+<div th:replace="~{fragments/navigation :: navigation('missions')}"></div>
+<main class="page-shell">
+    <section class="page-heading">
+        <div><p class="eyebrow">Live operations <span class="live-indicator"></span></p><h1>Mission tracker</h1><p class="muted">Deployment progress and drone battery status.</p></div>
+        <button class="button button-secondary" id="refresh-missions" type="button">Refresh now</button>
+    </section>
+
+    <section class="data-section">
+        <div class="section-heading"><div><p class="eyebrow">Dispatch history</p><h2>Active and completed missions</h2></div><span class="count-label" th:text="|${#lists.size(missions)} missions|">0 missions</span></div>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Mission</th><th>Incident building</th><th>Drone</th><th>Drone's helipad</th><th>One-way distance</th><th>Status</th><th>Drone battery</th><th>Dispatched</th><th>Actions</th></tr></thead>
+            <tbody id="mission-rows"><tr th:each="mission : ${missions}" th:attr="data-mission-id=${mission.id}">
+                <td class="mono" th:text="|#${mission.id}|">#1</td>
+                <td class="strong" th:text="${mission.incident != null and mission.incident.building != null ? mission.incident.building.name : '-'}">Skyline Towers</td>
+                <td th:text="${mission.drone != null ? mission.drone.model : '-'}">FF-Drone-01</td>
+                <td th:text="${mission.drone != null and mission.drone.helipad != null and mission.drone.helipad.building != null ? mission.drone.helipad.building.name : '-'}">Phoenix Mall</td>
+                <td class="mono">
+                    <span th:if="${mission.distanceKm == 0.0}">0.00 km - own rooftop helipad</span>
+                    <span th:unless="${mission.distanceKm == 0.0}" th:text="|${#numbers.formatDecimal(mission.distanceKm, 1, 2)} km - nearby helipad|"></span>
+                </td>
+                <td><span class="status" th:text="${mission.status}">TRANSIT</span></td>
+                <td class="mono" th:text="${mission.drone != null ? #numbers.formatDecimal(mission.drone.batteryPercent, 1, 1) + '%' : '-'}">100%</td>
+                <td class="mono" th:text="${#temporals.format(mission.dispatchTime, 'HH:mm:ss')}">12:00:00</td>
+                <td class="mission-actions">
+                    <button class="icon-button icon-button-danger" type="button" data-action="delete" th:attr="data-id=${mission.id}" aria-label="Delete mission" title="Delete mission">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
+                    </button>
+                </td>
+            </tr><tr id="empty-missions" th:if="${#lists.isEmpty(missions)}"><td class="empty" colspan="9">No missions have been dispatched yet.</td></tr></tbody>
+        </table></div>
+        <p id="mission-feedback" class="setting-feedback" role="status" hidden></p>
+        <p class="table-footnote"><span class="live-indicator"></span> Automatically updated every 2 seconds</p>
+    </section>
+</main>
+<script>
+    const missionRows = document.getElementById('mission-rows');
+    const missionCount = document.querySelector('.count-label');
+    const missionFeedback = document.getElementById('mission-feedback');
+    let refreshInProgress = false;
+
+    function showFeedback(element, message) {
+        element.textContent = message;
+        element.hidden = !message;
+    }
+
+    function makeCell(value, className) {
+        const cell = document.createElement('td');
+        if (className) cell.className = className;
+        cell.textContent = value;
+        return cell;
+    }
+
+    function formatDispatchTime(value) {
+        if (typeof value === 'string') return value.split('T')[1]?.slice(0, 8) || '-';
+        if (Array.isArray(value) && value.length >= 5) {
+            return [value[3], value[4], value[5] || 0].map(part => String(part).padStart(2, '0')).join(':');
+        }
+        return '-';
+    }
+
+    function makeActionButton(action, id, label, icon) {
+        const button = document.createElement('button');
+        button.className = 'icon-button icon-button-danger';
+        button.type = 'button';
+        button.dataset.action = action;
+        button.dataset.id = id;
+        button.setAttribute('aria-label', label);
+        button.title = label;
+        button.innerHTML = icon;
+        return button;
+    }
+
+    function renderMission(mission) {
+        const row = document.createElement('tr');
+        row.dataset.missionId = mission.id;
+        const incidentBuilding = mission.incident?.building?.name || '-';
+        const drone = mission.drone;
+        const helipadBuilding = drone?.helipad?.building?.name || '-';
+        const distance = Number(mission.distanceKm || 0);
+        const statusCell = document.createElement('td');
+        const status = document.createElement('span');
+        status.className = 'status';
+        status.textContent = mission.status || '-';
+        statusCell.append(status);
+
+        row.append(
+            makeCell(`#${mission.id}`, 'mono'),
+            makeCell(incidentBuilding, 'strong'),
+            makeCell(drone?.model || '-'),
+            makeCell(helipadBuilding),
+            makeCell(distance === 0 ? '0.00 km - own rooftop helipad' : `${distance.toFixed(2)} km - nearby helipad`, 'mono'),
+            statusCell,
+            makeCell(drone && Number.isFinite(Number(drone.batteryPercent)) ? `${Number(drone.batteryPercent).toFixed(1)}%` : '-', 'mono'),
+            makeCell(formatDispatchTime(mission.dispatchTime), 'mono')
+        );
+
+        const actions = document.createElement('td');
+        actions.className = 'mission-actions';
+        actions.append(makeActionButton('delete', mission.id, 'Delete mission', '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>'));
+        row.append(actions);
+        return row;
+    }
+
+    async function refreshMissions() {
+        if (refreshInProgress) return;
+        refreshInProgress = true;
+        try {
+            const response = await fetch('/api/missions', { headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error('Could not load missions.');
+            const missions = await response.json();
+            missionRows.replaceChildren();
+            if (missions.length) {
+                missions.forEach(mission => missionRows.append(renderMission(mission)));
+            } else {
+                const emptyRow = document.createElement('tr');
+                const emptyCell = makeCell('No missions have been dispatched yet.', 'empty');
+                emptyCell.colSpan = 9;
+                emptyRow.append(emptyCell);
+                missionRows.append(emptyRow);
+            }
+            missionCount.textContent = `${missions.length} missions`;
+            showFeedback(missionFeedback, '');
+        } catch (error) {
+            showFeedback(missionFeedback, error.message || 'Could not load missions.');
+        } finally {
+            refreshInProgress = false;
+        }
+    }
+
+    missionRows.addEventListener('click', async event => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const missionId = button.dataset.id;
+        if (!window.confirm(`Delete mission #${missionId}?`)) return;
+        try {
+            const response = await fetch(`/api/missions/${encodeURIComponent(missionId)}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error((await response.text()) || 'Could not delete mission.');
+            await refreshMissions();
+        } catch (error) {
+            showFeedback(missionFeedback, error.message || 'Could not delete mission.');
+        }
+    });
+
+    document.getElementById('refresh-missions').addEventListener('click', refreshMissions);
+    refreshMissions();
+    window.setInterval(refreshMissions, 2000);
+</script>
+</body>
+</html>

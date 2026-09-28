@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Report incident | Drone Operations</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<div th:replace="~{fragments/navigation :: navigation('incidents')}"></div>
+<main class="page-shell">
+    <section class="page-heading">
+        <div><p class="eyebrow">Emergency response</p><h1>Report a fire</h1><p class="muted">A suitable available drone is selected and dispatched automatically.</p></div>
+    </section>
+
+    <section class="form-layout">
+        <form class="form-panel" th:action="@{/incidents/report}" method="post">
+            <div class="section-heading"><div><p class="eyebrow">New incident</p><h2>Incident details</h2></div><span class="live-dot">Dispatch enabled</span></div>
+            <label for="buildingId">Building on fire</label>
+            <select id="buildingId" name="buildingId" required>
+                <option th:each="building : ${buildings}" th:value="${building.id}" th:text="${building.name}" th:selected="${buildingStat.first}">Skyline Towers</option>
+            </select>
+            <label for="severity">Severity</label>
+            <select id="severity" name="severity" required>
+                <option th:each="level : ${severities}" th:value="${level}" th:text="${level}" th:selected="${level.name() == 'HIGH'}">HIGH</option>
+            </select>
+            <button class="button button-primary" type="submit">Report fire and dispatch drone</button>
+            <p class="form-note">Dispatch selection uses distance, battery level, and firefighting capability.</p>
+        </form>
+
+        <aside class="response-panel">
+            <p class="eyebrow">Dispatch response</p>
+            <div th:if="${resultType == 'success' and mission != null}" class="notice notice-success">
+                <strong>Mission dispatched</strong>
+                <p th:text="|Mission #${mission.id} assigned to ${mission.drone.model}.|">Mission dispatched.</p>
+                <dl class="result-list">
+                    <div><dt>Drone's helipad</dt><dd th:text="${mission.drone.helipad.building.name}">Skyline Towers</dd></div>
+                    <div><dt>One-way distance</dt><dd>
+                        <span th:if="${mission.distanceKm == 0.0}">0.00 km - dispatched from this building's rooftop helipad</span>
+                        <span th:unless="${mission.distanceKm == 0.0}" th:text="|${#numbers.formatDecimal(mission.distanceKm, 1, 2)} km - dispatched from a nearby helipad|"></span>
+                    </dd></div>
+                    <div><dt>Status</dt><dd th:text="${mission.status}">DISPATCHED</dd></div>
+                </dl>
+                <a class="text-link" th:href="@{/missions}">Open mission tracker <span aria-hidden="true">&#8594;</span></a>
+            </div>
+            <div th:if="${resultMessage != null}" class="notice" th:classappend="${resultType == 'warning'} ? ' notice-warning' : ' notice-error'">
+                <strong th:text="${resultType == 'warning' ? 'No drone available' : 'Unable to report incident'}">Dispatch update</strong>
+                <p th:text="${resultMessage}">Dispatch result appears here.</p>
+            </div>
+            <div th:if="${resultMessage == null and mission == null}" class="empty-state">
+                <span class="empty-mark">01</span><p>Dispatch results will appear here after an incident is submitted.</p>
+            </div>
+            <a class="text-link" th:href="@{/missions}">View all missions <span aria-hidden="true">&#8594;</span></a>
+        </aside>
+    </section>
+</main>
+</body>
+</html>

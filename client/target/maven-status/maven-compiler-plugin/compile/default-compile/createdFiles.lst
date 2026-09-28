@@ -1,0 +1,10 @@
+com\example\dronehelipadclient\view\DashboardView.class
+com\example\dronehelipadclient\api\ApiClient.class
+com\example\dronehelipadclient\model\HelipadDto.class
+com\example\dronehelipadclient\model\DroneDto.class
+com\example\dronehelipadclient\model\MissionDto.class
+com\example\dronehelipadclient\view\IncidentFormView.class
+com\example\dronehelipadclient\view\MissionTrackerView.class
+com\example\dronehelipadclient\model\BuildingDto.class
+com\example\dronehelipadclient\model\IncidentDto.class
+com\example\dronehelipadclient\ClientApplication.class

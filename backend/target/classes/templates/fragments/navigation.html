@@ -1,0 +1,11 @@
+<nav class="topbar" th:fragment="navigation(activePage)">
+    <a class="brand" th:href="@{/dashboard}">
+        <span class="brand-mark">DP</span>
+        <span>Drone Operations<span class="brand-subtitle">URBAN RESPONSE NETWORK</span></span>
+    </a>
+    <div class="nav-links" aria-label="Main navigation">
+        <a th:href="@{/dashboard}" th:classappend="${activePage == 'dashboard'} ? ' active'">Fleet</a>
+        <a th:href="@{/incidents}" th:classappend="${activePage == 'incidents'} ? ' active'">Report incident</a>
+        <a th:href="@{/missions}" th:classappend="${activePage == 'missions'} ? ' active'">Missions</a>
+    </div>
+</nav>
